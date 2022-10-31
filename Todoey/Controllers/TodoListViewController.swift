@@ -11,15 +11,15 @@ import UIKit
 class TodoListViewController: UITableViewController {
     
     var items :[Item] = []
-
-    let dataFilePath = FileManager.default
-        .urls(for: .documentDirectory, in: .userDomainMask)
-        .first?
-        .appendingPathExtension("ItemArray")
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
         loadItems()
+        configureNavigationBar()
+    }
+    
+    func configureNavigationBar() {
         navigationController?.navigationBar.barStyle = .black
         let appearance = UINavigationBarAppearance()
         appearance.backgroundColor = UIColor(red: 0.448, green: 0.766, blue: 0.937, alpha: 1)
@@ -71,11 +71,9 @@ class TodoListViewController: UITableViewController {
         _ tableView: UITableView,
         didSelectRowAt indexPath: IndexPath
     ) {
-        let cell = tableView.cellForRow(at: indexPath)
         items[indexPath.row].done = !items[indexPath.row].done
-        tableView.reloadData()
-        tableView.deselectRow(at: indexPath, animated: true)
         saveItems()
+        tableView.deselectRow(at: indexPath, animated: true)
     }
     
     // MARK: - Add New Item
@@ -89,7 +87,9 @@ class TodoListViewController: UITableViewController {
         let addAction = UIAlertAction(title: "추가", style: .default) { _ in
             if let title = alert.textFields?.first?.text,
                !title.isEmpty {
-                let newItem  = Item(title: title)
+                let newItem  = Item(context: self.context)
+                newItem.done = false
+                newItem.title = title
                 self.items.append(newItem)
                 self.tableView.reloadData()
                 self.saveItems()
@@ -101,24 +101,21 @@ class TodoListViewController: UITableViewController {
     }
     
     func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-                items = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("Error decoding Item Array \(error)")
-            }
+        let request = Item.fetchRequest()
+        do {
+            items = try context.fetch(request)
+        } catch {
+            print("Error fetching items \(error)")
         }
     }
     
     func saveItems() {
-        let encoder = PropertyListEncoder()
         do {
-            let data = try encoder.encode(self.items)
-            try data.write(to: self.dataFilePath!)
+            try context.save()
         } catch {
-            print("encoding error \(error)")
+            print("CoreData save error \(error)")
         }
+        tableView.reloadData()
     }
     
 }
