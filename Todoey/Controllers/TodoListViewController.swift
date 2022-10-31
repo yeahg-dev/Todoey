@@ -6,6 +6,7 @@
 //  Copyright © 2019 App Brewery. All rights reserved.
 //
 
+import CoreData
 import UIKit
 
 class TodoListViewController: UITableViewController {
@@ -100,13 +101,13 @@ class TodoListViewController: UITableViewController {
         present(alert, animated: true)
     }
     
-    func loadItems() {
-        let request = Item.fetchRequest()
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
         do {
             items = try context.fetch(request)
         } catch {
             print("Error fetching items \(error)")
         }
+        tableView.reloadData()
     }
     
     func saveItems() {
@@ -118,4 +119,23 @@ class TodoListViewController: UITableViewController {
         tableView.reloadData()
     }
     
+}
+
+extension TodoListViewController: UISearchBarDelegate {
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request = Item.fetchRequest()
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        loadItems(with: request)
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text!.isEmpty {
+            loadItems()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+    }
 }
