@@ -12,7 +12,8 @@ import UIKit
 class TodoListViewController: UITableViewController {
     
     var items :[Item] = []
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    let container = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
+    lazy var backgroundContext: NSManagedObjectContext = self.container.newBackgroundContext()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -72,7 +73,9 @@ class TodoListViewController: UITableViewController {
         _ tableView: UITableView,
         didSelectRowAt indexPath: IndexPath
     ) {
-        items[indexPath.row].done = !items[indexPath.row].done
+        backgroundContext.perform {
+            self.items[indexPath.row].done = !self.items[indexPath.row].done
+        }
         saveItems()
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -88,12 +91,8 @@ class TodoListViewController: UITableViewController {
         let addAction = UIAlertAction(title: "추가", style: .default) { _ in
             if let title = alert.textFields?.first?.text,
                !title.isEmpty {
-                let newItem  = Item(context: self.context)
-                newItem.done = false
-                newItem.title = title
-                self.items.append(newItem)
+                self.createItem(withTitle: title)
                 self.tableView.reloadData()
-                self.saveItems()
             }
         }
         alert.addAction(addAction)
@@ -101,22 +100,44 @@ class TodoListViewController: UITableViewController {
         present(alert, animated: true)
     }
     
-    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
-        do {
-            items = try context.fetch(request)
-        } catch {
-            print("Error fetching items \(error)")
+    func createItem(withTitle title: String) {
+        backgroundContext.perform {
+            let newItem  = Item(context: self.backgroundContext)
+            newItem.done = false
+            newItem.title = title
+            self.items.append(newItem)
+            do {
+                try self.backgroundContext.save()
+            } catch {
+                print("CoreData save error \(error)")
+            }
         }
-        tableView.reloadData()
+    }
+    
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+        backgroundContext.perform {
+            do {
+                self.items = try self.backgroundContext.fetch(request)
+            } catch {
+                print("Error fetching items \(error)")
+            }
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+            }
+        }
     }
     
     func saveItems() {
-        do {
-            try context.save()
-        } catch {
-            print("CoreData save error \(error)")
+        backgroundContext.perform {
+            do {
+                try self.backgroundContext.save()
+            } catch {
+                print("CoreData save error \(error)")
+            }
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+            }
         }
-        tableView.reloadData()
     }
     
 }
