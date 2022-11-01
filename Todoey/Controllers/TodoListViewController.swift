@@ -11,24 +11,29 @@ import UIKit
 
 class TodoListViewController: UITableViewController {
     
+    var selectedCategoryID: NSManagedObjectID? {
+         willSet(id) {
+            selectedCategory = backgroundContext.object(with: id!) as? ItemCategory
+        }
+    }
+    
+    var selectedCategory: ItemCategory? {
+        didSet {
+            loadItems()
+        }
+    }
+    
     var items :[Item] = []
     let container = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
     lazy var backgroundContext: NSManagedObjectContext = self.container.newBackgroundContext()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadItems()
         configureNavigationBar()
     }
     
     func configureNavigationBar() {
-        navigationController?.navigationBar.barStyle = .black
-        let appearance = UINavigationBarAppearance()
-        appearance.backgroundColor = UIColor(red: 0.448, green: 0.766, blue: 0.937, alpha: 1)
-        appearance.titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-        appearance.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-        navigationController?.navigationBar.standardAppearance = appearance
-        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.navigationBar.prefersLargeTitles = false
     }
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -105,6 +110,7 @@ class TodoListViewController: UITableViewController {
             let newItem  = Item(context: self.backgroundContext)
             newItem.done = false
             newItem.title = title
+            newItem.parentCategory = self.selectedCategory
             self.items.append(newItem)
             do {
                 try self.backgroundContext.save()
@@ -114,8 +120,23 @@ class TodoListViewController: UITableViewController {
         }
     }
     
-    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+    func loadItems(
+        with request: NSFetchRequest<Item> = Item.fetchRequest(),
+        predicate: NSPredicate? = nil)
+    {
         backgroundContext.perform {
+            let categoryPredicate = NSPredicate(
+                format: "parentCategory.name MATCHES %@",
+                self.selectedCategory!.name!)
+            
+            if let additionalPredicate = predicate {
+                let compoundPredicate = NSCompoundPredicate(
+                    andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+                request.predicate = compoundPredicate
+            } else {
+                request.predicate = categoryPredicate
+            }
+            
             do {
                 self.items = try self.backgroundContext.fetch(request)
             } catch {
@@ -146,9 +167,9 @@ extension TodoListViewController: UISearchBarDelegate {
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         let request = Item.fetchRequest()
-        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
         request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
-        loadItems(with: request)
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        loadItems(with: request, predicate: predicate)
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
