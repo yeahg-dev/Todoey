@@ -9,10 +9,14 @@
 import CoreData
 import UIKit
 
-class TodoListViewController: UITableViewController {
+final class TodoListViewController: UITableViewController {
+    
+    var items :[Item] = []
+    let container = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
+    lazy var backgroundContext: NSManagedObjectContext = self.container.newBackgroundContext()
     
     var selectedCategoryID: NSManagedObjectID? {
-         willSet(id) {
+        willSet(id) {
             selectedCategory = backgroundContext.object(with: id!) as? ItemCategory
         }
     }
@@ -22,10 +26,6 @@ class TodoListViewController: UITableViewController {
             loadItems()
         }
     }
-    
-    var items :[Item] = []
-    let container = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
-    lazy var backgroundContext: NSManagedObjectContext = self.container.newBackgroundContext()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -48,16 +48,20 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(
         _ tableView: UITableView,
-        numberOfRowsInSection section: Int
-    ) -> Int {
+        numberOfRowsInSection section: Int)
+    -> Int
+    {
         return items.count
     }
     
     override func tableView(
         _ tableView: UITableView,
-        cellForRowAt indexPath: IndexPath
-    ) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "TodoItemCell", for: indexPath)
+        cellForRowAt indexPath: IndexPath)
+    -> UITableViewCell
+    {
+        let cell = tableView.dequeueReusableCell(
+            withIdentifier: "TodoItemCell",
+            for: indexPath)
         let item = items[indexPath.row]
         
         if #available(iOS 14.0, *) {
@@ -76,8 +80,8 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(
         _ tableView: UITableView,
-        didSelectRowAt indexPath: IndexPath
-    ) {
+        didSelectRowAt indexPath: IndexPath)
+    {
         backgroundContext.perform {
             self.items[indexPath.row].done = !self.items[indexPath.row].done
         }
@@ -88,15 +92,22 @@ class TodoListViewController: UITableViewController {
     // MARK: - Add New Item
     
     @IBAction func addButtonDidPressed(_ sender: UIBarButtonItem) {
-        let alert = UIAlertController(title: "투두이 아이템 추가", message: "", preferredStyle: .alert)
+        let alert = UIAlertController(
+            title: "투두이 아이템 추가",
+            message: "",
+            preferredStyle: .alert)
         alert.addTextField { alertTextField in
             alertTextField.placeholder = "새로운 할 일 작성"
         }
         
-        let addAction = UIAlertAction(title: "추가", style: .default) { _ in
+        let addAction = UIAlertAction(
+            title: "추가",
+            style: .default)
+        { [unowned self] _ in
             if let title = alert.textFields?.first?.text,
                !title.isEmpty {
                 self.createItem(withTitle: title)
+                self.loadItems()
                 self.tableView.reloadData()
             }
         }
@@ -106,7 +117,7 @@ class TodoListViewController: UITableViewController {
     }
     
     func createItem(withTitle title: String) {
-        backgroundContext.perform {
+        backgroundContext.perform { [unowned self] in
             let newItem  = Item(context: self.backgroundContext)
             newItem.done = false
             newItem.title = title
@@ -149,7 +160,7 @@ class TodoListViewController: UITableViewController {
     }
     
     func saveItems() {
-        backgroundContext.perform {
+        backgroundContext.perform { [unowned self] in
             do {
                 try self.backgroundContext.save()
             } catch {

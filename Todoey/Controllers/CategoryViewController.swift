@@ -9,7 +9,7 @@
 import CoreData
 import UIKit
 
-class CategoryViewController: UITableViewController {
+final class CategoryViewController: UITableViewController {
 
     var categories :[ItemCategory] = []
     let container = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
@@ -30,9 +30,15 @@ class CategoryViewController: UITableViewController {
     func configureNavigationBar() {
         navigationController?.navigationBar.barStyle = .black
         let appearance = UINavigationBarAppearance()
-        appearance.backgroundColor = UIColor(red: 0.448, green: 0.766, blue: 0.937, alpha: 1)
-        appearance.titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-        appearance.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
+        appearance.backgroundColor = UIColor(
+            red: 0.448,
+            green: 0.766,
+            blue: 0.937,
+            alpha: 1)
+        appearance.titleTextAttributes = [
+            NSAttributedString.Key.foregroundColor: UIColor.white]
+        appearance.largeTitleTextAttributes = [
+            NSAttributedString.Key.foregroundColor: UIColor.white]
         navigationController?.navigationBar.standardAppearance = appearance
         navigationController?.navigationBar.scrollEdgeAppearance = appearance
     }
